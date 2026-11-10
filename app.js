@@ -80,7 +80,7 @@ function rowHtml(s) {
     h += '<div class="ed">';
     slotsFor(s).forEach(function (sl) {
       var v = e[sl[0]] || { n: '', t: '' };
-      h += '<div class="slot"><label for="n-' + sl[0] + '">' + sl[1] + '</label><div class="pair"><input class="num" id="n-' + sl[0] + '" data-k="' + sl[0] + '" inputmode="numeric" placeholder="Nº" value="' + esc(v.n || '') + '" aria-label="Número do hino"><input class="tit" id="t-' + sl[0] + '" data-k="' + sl[0] + '" placeholder="Título" value="' + esc(v.t || '') + '" aria-label="Título do hino"></div><div class="warn" id="w-' + sl[0] + '">' + repeats(s, sl[0], v.n) + '</div></div>';
+      h += '<div class="slot"><label for="n-' + sl[0] + '">' + sl[1] + '</label><div class="pair"><input class="num" id="n-' + sl[0] + '" data-k="' + sl[0] + '" inputmode="numeric" placeholder="Nº" value="' + esc(v.n || '') + '" aria-label="Número do hino"><input class="tit" id="t-' + sl[0] + '" data-k="' + sl[0] + '" list="hl" placeholder="Título" value="' + esc(v.t || '') + '" aria-label="Título do hino"></div><div class="warn" id="w-' + sl[0] + '">' + repeats(s, sl[0], v.n) + '</div></div>';
     });
     [['pianista', 'Pianista'], ['regente', 'Regente']].forEach(function (p) {
       h += '<div class="slot"><label for="m-' + p[0] + '">' + p[1] + '</label><div class="pair"><input class="tit" id="m-' + p[0] + '" placeholder="Nome" value="' + esc(e[p[0]] || '') + '"></div></div>';
@@ -112,9 +112,19 @@ document.getElementById('app').addEventListener('click', function (ev) {
   else if (t.dataset.save) { collect(t.dataset.save); close() }
   else if (t.dataset.clear) { saveDay(t.dataset.clear, null); close() }
 });
+/* Preenchimento automático: número -> título e título -> número */
 document.getElementById('app').addEventListener('input', function (ev) {
-  var i = ev.target; if (!i.classList.contains('num') || !open) return;
-  document.getElementById('w-' + i.dataset.k).textContent = repeats(open, i.dataset.k, i.value);
+  var i = ev.target; if (!open || !window.HINOS) return;
+  var k = i.dataset.k, n = document.getElementById('n-' + k), t = document.getElementById('t-' + k);
+  if (i.classList.contains('num')) {
+    var name = HINOS[num(i.value)];
+    if (name && (!t.value || t.dataset.auto === t.value)) { t.value = name; t.dataset.auto = name }
+    else if (!name && t.value && t.dataset.auto === t.value) { t.value = ''; t.dataset.auto = '' }
+  } else if (i.id.indexOf('t-') === 0) {
+    var found = HINOS_REV[i.value.trim().toLowerCase()];
+    if (found && (!n.value || n.dataset.auto === n.value)) { n.value = found; n.dataset.auto = found }
+  } else return;
+  document.getElementById('w-' + k).textContent = repeats(open, k, n.value);
 });
 function load() {
   sb('domingos?select=dia,hinos').then(function (rows) {
