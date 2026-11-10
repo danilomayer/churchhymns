@@ -48,16 +48,25 @@ function saveDay(s, e) {
   req.catch(function () { status('Não foi possível salvar online. Tente de novo.') });
 }
 function status(t) { document.getElementById('st').textContent = t }
+/* Primeiro domingo do mês (dia 1 a 7) não tem hino intermediário */
+function slotsFor(s) {
+  var first = parse(s).getDate() <= 7;
+  return SLOTS.filter(function (sl) { return !(first && sl[0] === 'intermediario') });
+}
 function summary(s) {
   var e = data[s] || {}, h = '';
-  SLOTS.forEach(function (sl) { var v = e[sl[0]]; if (v && (v.n || v.t)) h += '<div><span class="n">' + esc(v.n || '') + '</span>' + esc(v.t || '') + '</div>' });
-  return h || '<div class="empty">Sem hinos registrados</div>';
+  slotsFor(s).forEach(function (sl) { var v = e[sl[0]]; if (v && (v.n || v.t)) h += '<div><span class="n">' + esc(v.n || '') + '</span>' + esc(v.t || '') + '</div>' });
+  var w = [];
+  if (e.pianista) w.push('Pianista: ' + esc(e.pianista));
+  if (e.regente) w.push('Regente: ' + esc(e.regente));
+  if (w.length) h += '<div class="who">' + w.join(' · ') + '</div>';
+  return h || '<div class="empty">Sem registros</div>';
 }
 function repeats(s, k, n) {
   if (!n) return ''; var out = [];
   Object.keys(data).forEach(function (o) {
     if (o === s || Math.abs(parse(o) - parse(s)) > 56 * 864e5) return;
-    SLOTS.forEach(function (sl) { var v = data[o][sl[0]]; if (v && String(v.n).trim() === String(n).trim()) out.push(fmt(o, { day: 'numeric', month: 'short' })) });
+    slotsFor(o).forEach(function (sl) { var v = data[o][sl[0]]; if (v && String(v.n).trim() === String(n).trim()) out.push(fmt(o, { day: 'numeric', month: 'short' })) });
   });
   return out.length ? 'Também cantado em ' + out.filter(function (x, i) { return out.indexOf(x) === i }).join(', ') + '.' : '';
 }
@@ -67,9 +76,12 @@ function rowHtml(s) {
   if (open === s) {
     var e = data[s] || {};
     h += '<div class="ed">';
-    SLOTS.forEach(function (sl) {
+    slotsFor(s).forEach(function (sl) {
       var v = e[sl[0]] || { n: '', t: '' };
       h += '<div class="slot"><label for="n-' + sl[0] + '">' + sl[1] + '</label><div class="pair"><input class="num" id="n-' + sl[0] + '" data-k="' + sl[0] + '" inputmode="numeric" placeholder="Nº" value="' + esc(v.n || '') + '" aria-label="Número do hino"><input class="tit" id="t-' + sl[0] + '" data-k="' + sl[0] + '" placeholder="Título" value="' + esc(v.t || '') + '" aria-label="Título do hino"></div><div class="warn" id="w-' + sl[0] + '">' + repeats(s, sl[0], v.n) + '</div></div>';
+    });
+    [['pianista', 'Pianista'], ['regente', 'Regente']].forEach(function (p) {
+      h += '<div class="slot"><label for="m-' + p[0] + '">' + p[1] + '</label><div class="pair"><input class="tit" id="m-' + p[0] + '" placeholder="Nome" value="' + esc(e[p[0]] || '') + '"></div></div>';
     });
     h += '<div class="acts"><button class="b" data-save="' + s + '">Salvar</button><button class="b o" data-clear="' + s + '">Limpar</button></div></div>';
   }
@@ -85,7 +97,8 @@ function render() {
 }
 function collect(s) {
   var e = {}, any = false;
-  SLOTS.forEach(function (sl) { var n = document.getElementById('n-' + sl[0]).value.trim(), t = document.getElementById('t-' + sl[0]).value.trim(); e[sl[0]] = { n: n, t: t }; if (n || t) any = true });
+  slotsFor(s).forEach(function (sl) { var n = document.getElementById('n-' + sl[0]).value.trim(), t = document.getElementById('t-' + sl[0]).value.trim(); e[sl[0]] = { n: n, t: t }; if (n || t) any = true });
+  ['pianista', 'regente'].forEach(function (k) { var v = document.getElementById('m-' + k).value.trim(); e[k] = v; if (v) any = true });
   saveDay(s, any ? e : null);
 }
 function close() { open = null; render() }
