@@ -62,11 +62,13 @@ function summary(s) {
   if (w.length) h += '<div class="who">' + w.join(' · ') + '</div>';
   return h || '<div class="empty">Sem registros</div>';
 }
+/* Só considera números de hino; traço, texto ou vazio são ignorados */
+function num(x) { x = String(x || '').trim(); return /^\d+$/.test(x) ? String(+x) : null }
 function repeats(s, k, n) {
-  if (!n) return ''; var out = [];
+  n = num(n); if (n === null) return ''; var out = [];
   Object.keys(data).forEach(function (o) {
     if (o === s || Math.abs(parse(o) - parse(s)) > 56 * 864e5) return;
-    slotsFor(o).forEach(function (sl) { var v = data[o][sl[0]]; if (v && String(v.n).trim() === String(n).trim()) out.push(fmt(o, { day: 'numeric', month: 'short' })) });
+    slotsFor(o).forEach(function (sl) { var v = data[o][sl[0]]; if (v && num(v.n) === n) out.push(fmt(o, { day: 'numeric', month: 'short' })) });
   });
   return out.length ? 'Também cantado em ' + out.filter(function (x, i) { return out.indexOf(x) === i }).join(', ') + '.' : '';
 }
